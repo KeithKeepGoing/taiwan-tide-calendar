@@ -410,6 +410,33 @@ def debug_station(station: str):
     try:
         generator = TideCalendarGenerator(API_KEY, station)
         api_data = generator.fetch_tide_data()
+
+        # 顯示 API 原始結構
+        records = api_data.get("records", {})
+        tide_forecasts = records.get("TideForecast", [])
+
+        raw_structure = {
+            "records_keys": list(records.keys()),
+            "tide_forecasts_count": len(tide_forecasts),
+        }
+
+        if tide_forecasts:
+            first_forecast = tide_forecasts[0]
+            raw_structure["first_forecast_keys"] = list(first_forecast.keys())
+
+            location = first_forecast.get("Location", {})
+            raw_structure["location"] = location
+
+            time_periods = first_forecast.get("TimePeriods", {})
+            raw_structure["time_periods_keys"] = list(time_periods.keys())
+
+            daily_list = time_periods.get("Daily", [])
+            raw_structure["daily_count"] = len(daily_list)
+
+            if daily_list:
+                first_daily = daily_list[0]
+                raw_structure["first_daily"] = first_daily
+
         events = generator.parse_tide_events(api_data)
 
         # 只回傳前 5 個事件
@@ -427,6 +454,7 @@ def debug_station(station: str):
             "total_events": len(events),
             "sample_events": sample_events,
             "api_success": api_data.get("success"),
+            "raw_structure": raw_structure,
         })
     except Exception as e:
         import traceback
