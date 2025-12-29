@@ -14,6 +14,7 @@ from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 from flask import Flask, Response, request, jsonify, render_template_string
+from urllib.parse import unquote
 import requests
 from icalendar import Calendar, Event
 
@@ -322,6 +323,9 @@ def index():
 @app.route("/tide/<station>.ics")
 def tide_calendar(station: str):
     """提供潮汐日曆 iCal 檔案（即時產生，無快取）"""
+    # 解碼 URL 編碼的站名
+    station = unquote(station)
+
     if not API_KEY:
         return jsonify({"error": "API key not configured"}), 500
 
