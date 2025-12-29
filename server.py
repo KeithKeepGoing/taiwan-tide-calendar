@@ -117,21 +117,21 @@ INDEX_HTML = """
         
         <div class="station-grid">
             {% for station in stations %}
-            <a href="/tide/{{ station }}.ics" class="station-btn">{{ station }}</a>
+            <a href="webcal://{{ host }}/tide/{{ station }}.ics" class="station-btn">{{ station }}</a>
             {% endfor %}
         </div>
-        
+
         <div class="instructions">
             <h3>📱 iPhone 訂閱方式</h3>
             <ol>
                 <li>點擊上方任一站點</li>
-                <li>Safari 會詢問是否訂閱日曆，選擇「訂閱」</li>
-                <li>開啟「行事曆」App 即可看到潮汐資訊</li>
+                <li>系統會自動開啟行事曆 App 並詢問是否訂閱</li>
+                <li>點擊「訂閱」即可完成</li>
             </ol>
-            
+
             <h3>💻 手動訂閱 URL</h3>
-            <p>訂閱格式：<code>{{ base_url }}/tide/站名.ics</code></p>
-            <p>例如：<code>{{ base_url }}/tide/基隆.ics</code></p>
+            <p>iPhone/Mac 訂閱：<code>webcal://{{ host }}/tide/站名.ics</code></p>
+            <p>Google Calendar：<code>{{ base_url }}/tide/站名.ics</code></p>
             <p>可選參數：<code>?days=14</code> (預設 30 天)</p>
         </div>
         
@@ -149,10 +149,12 @@ INDEX_HTML = """
 def index():
     """首頁"""
     base_url = request.host_url.rstrip("/")
+    host = request.host  # 不含 protocol，用於 webcal://
     return render_template_string(
         INDEX_HTML,
         stations=TIDE_STATIONS.keys(),
         base_url=base_url,
+        host=host,
     )
 
 
