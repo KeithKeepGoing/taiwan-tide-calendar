@@ -1,0 +1,116 @@
+{
+  "name": "台灣潮汐日曆更新",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "每6小時執行",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://opendata.cwa.gov.tw/api/v1/rest/datastore/F-A0021-001",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $env.CWA_API_KEY }}"
+            },
+            {
+              "name": "format",
+              "value": "JSON"
+            },
+            {
+              "name": "LocationName",
+              "value": "基隆"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "http-request",
+      "name": "取得潮汐資料",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 解析潮汐資料並轉換為 iCal 格式\nconst data = $input.first().json;\nconst events = [];\n\nif (data.success === 'true' && data.records && data.records.TideForecast) {\n  for (const forecast of data.records.TideForecast) {\n    const location = forecast.Location;\n    const timePeriods = forecast.TimePeriods;\n    \n    if (timePeriods && timePeriods.Daily) {\n      for (const daily of timePeriods.Daily) {\n        const date = daily.Date;\n        \n        if (daily.TideRange) {\n          for (const tide of daily.TideRange) {\n            const tideType = tide.Tide; // 滿潮 or 乾潮\n            const tideTime = tide.TideTime;\n            const heights = tide.TideHeights || {};\n            const height = heights.AboveLocalMSL || heights.AboveTWVD || '';\n            \n            if (tideTime) {\n              const datetime = `${date}T${tideTime}:00`;\n              const emoji = tideType === '滿潮' ? '🔺' : '🔻';\n              \n              events.push({\n                datetime,\n                title: `${emoji} ${tideType}${height ? ' ' + height + 'cm' : ''}`,\n                description: `站點: ${location.LocationName}\\n潮位: ${height}cm`,\n                type: tideType,\n                height\n              });\n            }\n          }\n        }\n      }\n    }\n  }\n}\n\n// 產生 iCal 格式\nconst icalLines = [\n  'BEGIN:VCALENDAR',\n  'VERSION:2.0',\n  'PRODID:-//台灣潮汐日曆//n8n//TW',\n  'CALSCALE:GREGORIAN',\n  'METHOD:PUBLISH',\n  'X-WR-CALNAME:🌊 基隆潮汐',\n  'X-WR-TIMEZONE:Asia/Taipei'\n];\n\nfor (const event of events) {\n  const dt = event.datetime.replace(/[-:]/g, '').replace('T', 'T');\n  const uid = `${dt}-${event.type}@tide.tw`;\n  \n  icalLines.push('BEGIN:VEVENT');\n  icalLines.push(`DTSTART;TZID=Asia/Taipei:${dt}`);\n  icalLines.push(`SUMMARY:${event.title}`);\n  icalLines.push(`DESCRIPTION:${event.description.replace(/\\n/g, '\\\\n')}`);\n  icalLines.push(`UID:${uid}`);\n  icalLines.push('END:VEVENT');\n}\n\nicalLines.push('END:VCALENDAR');\n\nreturn [{\n  json: {\n    eventCount: events.length,\n    icalContent: icalLines.join('\\r\\n')\n  },\n  binary: {\n    data: {\n      data: Buffer.from(icalLines.join('\\r\\n')).toString('base64'),\n      mimeType: 'text/calendar',\n      fileName: 'tide.ics'\n    }\n  }\n}];"
+      },
+      "id": "code-transform",
+      "name": "轉換為iCal",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/data/tide.ics",
+        "options": {}
+      },
+      "id": "write-file",
+      "name": "儲存檔案",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [900, 300]
+    }
+  ],
+  "connections": {
+    "每6小時執行": {
+      "main": [
+        [
+          {
+            "node": "取得潮汐資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "取得潮汐資料": {
+      "main": [
+        [
+          {
+            "node": "轉換為iCal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "轉換為iCal": {
+      "main": [
+        [
+          {
+            "node": "儲存檔案",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "pinData": {}
+}
