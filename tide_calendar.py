@@ -102,7 +102,8 @@ class TideCalendarGenerator:
         
         try:
             records = api_data.get("records", {})
-            tide_forecasts = records.get("TideForecast", [])
+            # API 回傳的 key 是 TideForecasts（複數）
+            tide_forecasts = records.get("TideForecasts", records.get("TideForecast", []))
             
             for forecast in tide_forecasts:
                 location = forecast.get("Location", {})

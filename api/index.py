@@ -93,7 +93,8 @@ class TideCalendarGenerator:
         events = []
 
         records = api_data.get("records", {})
-        tide_forecasts = records.get("TideForecast", [])
+        # API 回傳的 key 是 TideForecasts（複數）
+        tide_forecasts = records.get("TideForecasts", records.get("TideForecast", []))
 
         logger.info(f"API 回傳 {len(tide_forecasts)} 個預報")
 
@@ -413,7 +414,7 @@ def debug_station(station: str):
 
         # 顯示 API 原始結構
         records = api_data.get("records", {})
-        tide_forecasts = records.get("TideForecast", [])
+        tide_forecasts = records.get("TideForecasts", records.get("TideForecast", []))
 
         raw_structure = {
             "records_keys": list(records.keys()),
