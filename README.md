@@ -9,6 +9,7 @@
 - 📱 支援 iPhone / iPad / Mac / Google Calendar 訂閱
 - 🗺️ 支援全台 263 個潮汐站點（縣市、海水浴場、漁港、海釣、潛點、衝浪點）
 - 🐳 Docker 一鍵部署
+- ☁️ 支援 Vercel 免費部署
 
 ## 快速開始
 
@@ -108,6 +109,49 @@ python tide_calendar.py --station 漁港八斗子 --output ./badouzi.ics
 
 ## 部署方式
 
+### Vercel 部署（推薦）
+
+免費、快速、自動 HTTPS，適合個人使用。
+
+#### 方式 A：透過 Vercel Dashboard
+
+1. Fork 或 Push 專案到你的 GitHub
+2. 前往 [vercel.com/new](https://vercel.com/new)
+3. 點擊 **Import Git Repository**
+4. 選擇你的 `taiwan-tide-calendar` repository
+5. 在 **Environment Variables** 新增：
+   - Name: `CWA_API_KEY`
+   - Value: 你的中央氣象署 API 授權碼
+6. 點擊 **Deploy**
+7. 部署完成後會得到 URL，如 `https://taiwan-tide-calendar.vercel.app`
+
+#### 方式 B：透過 Vercel CLI
+
+```bash
+# 安裝 Vercel CLI
+npm i -g vercel
+
+# 登入
+vercel login
+
+# 部署（會引導你連結 GitHub）
+vercel
+
+# 設定環境變數
+vercel env add CWA_API_KEY
+
+# 正式部署
+vercel --prod
+```
+
+#### Vercel 訂閱 URL 範例
+
+```
+https://your-project.vercel.app/tide/基隆市中正區.ics
+https://your-project.vercel.app/tide/漁港八斗子.ics
+https://your-project.vercel.app/tide/衝浪中角沙珠灣.ics?days=14
+```
+
 ### VPS / NAS 部署
 
 1. 安裝 Docker
@@ -155,7 +199,7 @@ server {
 
 ### Q: 日曆多久更新一次？
 
-A: 伺服器每 6 小時重新抓取資料。iPhone 的訂閱日曆通常每天更新 1-2 次。
+A: Vercel 部署版本每次請求即時取得最新資料。Docker 部署版本每 6 小時更新快取。iPhone 的訂閱日曆通常每天更新 1-2 次。
 
 ### Q: 可以同時訂閱多個站點嗎？
 
