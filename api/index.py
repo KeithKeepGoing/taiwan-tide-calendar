@@ -394,3 +394,43 @@ def health():
         "api_configured": bool(API_KEY),
         "stations_loaded": len(TIDE_STATIONS),
     })
+
+
+@app.route("/debug/<station>")
+def debug_station(station: str):
+    """Debug endpoint - 檢查 API 回傳資料"""
+    station = unquote(station)
+
+    if not API_KEY:
+        return jsonify({"error": "API key not configured"}), 500
+
+    if station not in TIDE_STATIONS:
+        return jsonify({"error": f"Unknown station: {station}"}), 404
+
+    try:
+        generator = TideCalendarGenerator(API_KEY, station)
+        api_data = generator.fetch_tide_data()
+        events = generator.parse_tide_events(api_data)
+
+        # 只回傳前 5 個事件
+        sample_events = []
+        for e in events[:5]:
+            sample_events.append({
+                "datetime": e["datetime"].isoformat(),
+                "type": e["type"],
+                "height": e["height"],
+            })
+
+        return jsonify({
+            "station": station,
+            "location_id": TIDE_STATIONS.get(station),
+            "total_events": len(events),
+            "sample_events": sample_events,
+            "api_success": api_data.get("success"),
+        })
+    except Exception as e:
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
