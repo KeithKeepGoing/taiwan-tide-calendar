@@ -95,21 +95,29 @@ class TideCalendarGenerator:
         records = api_data.get("records", {})
         tide_forecasts = records.get("TideForecast", [])
 
+        logger.info(f"API 回傳 {len(tide_forecasts)} 個預報")
+
         for forecast in tide_forecasts:
             location = forecast.get("Location", {})
             location_name = location.get("LocationName", "")
 
-            if location_name != self.station_name:
+            logger.info(f"比較站名: API='{location_name}' vs 輸入='{self.station_name}'")
+
+            # 直接使用第一個預報（因為已經用 LocationId 過濾過了）
+            if not tide_forecasts:
                 continue
 
             time_periods = forecast.get("TimePeriods", {})
             daily_list = time_periods.get("Daily", [])
 
+            logger.info(f"找到 {len(daily_list)} 天的資料")
+
             for daily in daily_list:
                 date_str = daily.get("Date", "")
                 lunar_day = daily.get("LunarDay", "")
+                tide_range = daily.get("TideRange", [])
 
-                for tide_info in daily.get("TideRange", []):
+                for tide_info in tide_range:
                     tide_type = tide_info.get("Tide", "")
                     tide_time_str = tide_info.get("TideTime", "")
                     tide_height = tide_info.get("TideHeights", {})
@@ -134,6 +142,7 @@ class TideCalendarGenerator:
                         except ValueError as e:
                             logger.warning(f"日期解析失敗: {dt_str}, {e}")
 
+        logger.info(f"共解析 {len(events)} 個潮汐事件")
         return events
 
     def create_ical(self, events: list[dict], days_ahead: int = 30) -> Calendar:
@@ -148,12 +157,19 @@ class TideCalendarGenerator:
 
         now = datetime.now(TW_TZ)
         cutoff = now + timedelta(days=days_ahead)
+        # 往前推 1 天，避免時區問題導致今天的事件被過濾掉
+        start = now - timedelta(days=1)
+
+        logger.info(f"過濾時間範圍: {start} ~ {cutoff}")
+        event_count = 0
 
         for event_data in events:
             event_dt = event_data["datetime"]
 
-            if event_dt < now or event_dt > cutoff:
+            if event_dt < start or event_dt > cutoff:
                 continue
+
+            event_count += 1
 
             event = Event()
 
@@ -185,6 +201,7 @@ class TideCalendarGenerator:
 
             cal.add_component(event)
 
+        logger.info(f"加入 {event_count} 個事件到日曆")
         return cal
 
     def generate_ical_bytes(self, days_ahead: int = 30) -> bytes:
