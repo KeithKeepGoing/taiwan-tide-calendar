@@ -178,7 +178,9 @@ class TideCalendarGenerator:
             lunar_day = event_data.get("lunar_day", "")
 
             emoji = "🔺" if tide_type == "滿潮" else "🔻"
-            title = f"{emoji} {tide_type}"
+            # 簡化站點名稱（移除「縣市」等後綴，保留關鍵資訊）
+            short_name = self.station_name.replace("市", "").replace("縣", "").replace("區", "").replace("鄉", "").replace("鎮", "")
+            title = f"{short_name} {emoji}{tide_type}"
             if height:
                 title += f" {height}cm"
 
