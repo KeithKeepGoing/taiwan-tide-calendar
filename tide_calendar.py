@@ -104,53 +104,49 @@ class TideCalendarGenerator:
             records = api_data.get("records", {})
             # API 回傳的 key 是 TideForecasts（複數）
             tide_forecasts = records.get("TideForecasts", records.get("TideForecast", []))
-            
+
             for forecast in tide_forecasts:
+                # Location 包含所有資料
                 location = forecast.get("Location", {})
                 location_name = location.get("LocationName", "")
-                
+
                 if location_name != self.station_name:
                     continue
-                
-                # 取得每日潮汐資料
-                time_periods = forecast.get("TimePeriods", {})
+
+                # TimePeriods 在 Location 裡面
+                time_periods = location.get("TimePeriods", {})
                 daily_list = time_periods.get("Daily", [])
-                
+
                 for daily in daily_list:
-                    date_str = daily.get("Date", "")
-                    
-                    # 解析滿潮資料
-                    lunar_day = daily.get("LunarDay", "")
-                    
-                    # 高潮時間
-                    for tide_info in daily.get("TideRange", []):
-                        tide_type = tide_info.get("Tide", "")  # 滿潮 or 乾潮
-                        tide_time_str = tide_info.get("TideTime", "")
+                    lunar_date = daily.get("LunarDate", "")
+                    # 潮汐資料在 Time 陣列裡
+                    time_list = daily.get("Time", [])
+
+                    for tide_info in time_list:
+                        tide_type = tide_info.get("Tide", "")
+                        # ISO 格式的時間
+                        date_time_str = tide_info.get("DateTime", "")
                         tide_height = tide_info.get("TideHeights", {})
-                        
-                        # 取得潮位高度（使用平均海平面基準）
-                        height_above_twvd = tide_height.get("AboveTWVD", "")
+
+                        # 取得潮位高度
                         height_above_local = tide_height.get("AboveLocalMSL", "")
+                        height_above_twvd = tide_height.get("AboveTWVD", "")
                         height_above_chart = tide_height.get("AboveChartDatum", "")
-                        
-                        # 優先使用當地平均海平面
                         height = height_above_local or height_above_twvd or height_above_chart
-                        
-                        if tide_time_str:
+
+                        if date_time_str:
                             try:
-                                # 組合日期和時間
-                                dt_str = f"{date_str} {tide_time_str}"
-                                dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-                                dt = dt.replace(tzinfo=TW_TZ)
-                                
+                                # 解析 ISO 格式: 2025-12-29T05:01:00+08:00
+                                dt = datetime.fromisoformat(date_time_str)
+
                                 events.append({
                                     "datetime": dt,
                                     "type": tide_type,
                                     "height": height,
-                                    "lunar_day": lunar_day,
+                                    "lunar_day": lunar_date,
                                 })
                             except ValueError as e:
-                                logger.warning(f"日期解析失敗: {dt_str}, {e}")
+                                logger.warning(f"日期解析失敗: {date_time_str}, {e}")
             
             logger.info(f"解析到 {len(events)} 個潮汐事件")
             return events

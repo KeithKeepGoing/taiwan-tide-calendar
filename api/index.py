@@ -99,49 +99,48 @@ class TideCalendarGenerator:
         logger.info(f"API 回傳 {len(tide_forecasts)} 個預報")
 
         for forecast in tide_forecasts:
+            # Location 包含所有資料
             location = forecast.get("Location", {})
             location_name = location.get("LocationName", "")
 
-            logger.info(f"比較站名: API='{location_name}' vs 輸入='{self.station_name}'")
+            logger.info(f"處理站點: {location_name}")
 
-            # 直接使用第一個預報（因為已經用 LocationId 過濾過了）
-            if not tide_forecasts:
-                continue
-
-            time_periods = forecast.get("TimePeriods", {})
+            # TimePeriods 在 Location 裡面
+            time_periods = location.get("TimePeriods", {})
             daily_list = time_periods.get("Daily", [])
 
             logger.info(f"找到 {len(daily_list)} 天的資料")
 
             for daily in daily_list:
-                date_str = daily.get("Date", "")
-                lunar_day = daily.get("LunarDay", "")
-                tide_range = daily.get("TideRange", [])
+                lunar_date = daily.get("LunarDate", "")
+                # 潮汐資料在 Time 陣列裡
+                time_list = daily.get("Time", [])
 
-                for tide_info in tide_range:
+                for tide_info in time_list:
                     tide_type = tide_info.get("Tide", "")
-                    tide_time_str = tide_info.get("TideTime", "")
+                    # ISO 格式的時間
+                    date_time_str = tide_info.get("DateTime", "")
                     tide_height = tide_info.get("TideHeights", {})
 
+                    # 取得潮位高度
                     height_above_local = tide_height.get("AboveLocalMSL", "")
                     height_above_twvd = tide_height.get("AboveTWVD", "")
                     height_above_chart = tide_height.get("AboveChartDatum", "")
                     height = height_above_local or height_above_twvd or height_above_chart
 
-                    if tide_time_str:
+                    if date_time_str:
                         try:
-                            dt_str = f"{date_str} {tide_time_str}"
-                            dt = datetime.strptime(dt_str, "%Y-%m-%d %H:%M")
-                            dt = dt.replace(tzinfo=TW_TZ)
+                            # 解析 ISO 格式: 2025-12-29T05:01:00+08:00
+                            dt = datetime.fromisoformat(date_time_str)
 
                             events.append({
                                 "datetime": dt,
                                 "type": tide_type,
                                 "height": height,
-                                "lunar_day": lunar_day,
+                                "lunar_day": lunar_date,
                             })
                         except ValueError as e:
-                            logger.warning(f"日期解析失敗: {dt_str}, {e}")
+                            logger.warning(f"日期解析失敗: {date_time_str}, {e}")
 
         logger.info(f"共解析 {len(events)} 個潮汐事件")
         return events
