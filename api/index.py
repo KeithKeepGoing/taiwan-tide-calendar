@@ -18,6 +18,17 @@ from urllib.parse import unquote
 import requests
 from icalendar import Calendar, Event
 
+# Vercel KV (Redis) 支援
+try:
+    import redis
+    REDIS_URL = os.environ.get("KV_URL", "")
+    if REDIS_URL:
+        kv = redis.from_url(REDIS_URL)
+    else:
+        kv = None
+except ImportError:
+    kv = None
+
 # 設定日誌
 logging.basicConfig(
     level=logging.INFO,
@@ -219,6 +230,50 @@ app = Flask(__name__)
 
 API_KEY = os.environ.get("CWA_API_KEY", "")
 
+
+# 計數器功能
+def increment_counter(key: str) -> int:
+    """增加計數器並回傳新值"""
+    if kv is None:
+        return 0
+    try:
+        return kv.incr(key)
+    except Exception as e:
+        logger.warning(f"Redis 計數器錯誤: {e}")
+        return 0
+
+
+def get_counter(key: str) -> int:
+    """取得計數器值"""
+    if kv is None:
+        return 0
+    try:
+        value = kv.get(key)
+        return int(value) if value else 0
+    except Exception as e:
+        logger.warning(f"Redis 讀取錯誤: {e}")
+        return 0
+
+
+def get_all_station_stats() -> dict:
+    """取得所有站點的訂閱統計"""
+    if kv is None:
+        return {"total": 0, "stations": {}}
+    try:
+        total = get_counter("stats:total")
+        stations = {}
+        # 取得各站點統計
+        for station in TIDE_STATIONS.keys():
+            count = get_counter(f"stats:station:{station}")
+            if count > 0:
+                stations[station] = count
+        # 按訂閱數排序
+        stations = dict(sorted(stations.items(), key=lambda x: x[1], reverse=True))
+        return {"total": total, "stations": stations}
+    except Exception as e:
+        logger.warning(f"Redis 統計錯誤: {e}")
+        return {"total": 0, "stations": {}}
+
 # HTML 首頁模板
 INDEX_HTML = """
 <!DOCTYPE html>
@@ -288,12 +343,47 @@ INDEX_HTML = """
             color: #888;
             font-size: 0.9em;
         }
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-around;
+            text-align: center;
+        }
+        .stats-item {
+            display: flex;
+            flex-direction: column;
+        }
+        .stats-number {
+            font-size: 1.8em;
+            font-weight: bold;
+        }
+        .stats-label {
+            font-size: 0.85em;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🌊 台灣潮汐日曆</h1>
         <p class="subtitle">自動更新的潮汐預報日曆，支援 iPhone / Google Calendar 訂閱</p>
+
+        {% if total_subscriptions > 0 %}
+        <div class="stats">
+            <div class="stats-item">
+                <span class="stats-number">{{ total_subscriptions }}</span>
+                <span class="stats-label">總訂閱次數</span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-number">{{ active_stations }}</span>
+                <span class="stats-label">熱門站點</span>
+            </div>
+        </div>
+        {% endif %}
 
         <h2>選擇觀測站</h2>
         <p>點擊下方站點即可訂閱該站的潮汐日曆：</p>
@@ -333,11 +423,17 @@ def index():
     """首頁"""
     base_url = request.host_url.rstrip("/")
     host = request.host  # 不含 protocol，用於 webcal://
+
+    # 取得訂閱統計
+    stats = get_all_station_stats()
+
     return render_template_string(
         INDEX_HTML,
         stations=TIDE_STATIONS.keys(),
         base_url=base_url,
         host=host,
+        total_subscriptions=stats["total"],
+        active_stations=len(stats["stations"]),
     )
 
 
@@ -363,6 +459,10 @@ def tide_calendar(station: str):
         generator = TideCalendarGenerator(API_KEY, station)
         ical_data = generator.generate_ical_bytes(days)
 
+        # 記錄訂閱統計
+        increment_counter("stats:total")
+        increment_counter(f"stats:station:{station}")
+
         filename_encoded = quote(f"{station}_tide.ics")
 
         return Response(
@@ -385,6 +485,17 @@ def list_stations():
     return jsonify({
         "stations": list(TIDE_STATIONS.keys()),
         "total": len(TIDE_STATIONS)
+    })
+
+
+@app.route("/api/stats")
+def api_stats():
+    """訂閱統計 API"""
+    stats = get_all_station_stats()
+    return jsonify({
+        "total_subscriptions": stats["total"],
+        "stations": stats["stations"],
+        "kv_enabled": kv is not None,
     })
 
 

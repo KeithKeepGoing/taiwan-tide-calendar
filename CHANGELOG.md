@@ -5,6 +5,18 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.2.0] - 2025-12-30
+
+### 新增
+- 首頁顯示訂閱統計（總訂閱次數、熱門站點數）
+- 新增 `/api/stats` 端點查看詳細訂閱統計
+- 使用 Vercel KV (Redis) 儲存訂閱計數
+
+### 技術細節
+- **修改檔案**: `api/index.py`, `requirements.txt`
+- **新增依賴**: `redis>=5.0.0`
+- **環境變數**: 需在 Vercel 設定 KV 儲存（KV_URL）
+
 ## [1.1.1] - 2025-12-30
 
 ### 變更
