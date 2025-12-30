@@ -122,11 +122,11 @@ class TideCalendarGenerator:
                     date_time_str = tide_info.get("DateTime", "")
                     tide_height = tide_info.get("TideHeights", {})
 
-                    # 取得潮位高度
-                    height_above_local = tide_height.get("AboveLocalMSL", "")
+                    # 取得潮位高度（優先使用台灣高程基準 TWVD）
                     height_above_twvd = tide_height.get("AboveTWVD", "")
+                    height_above_local = tide_height.get("AboveLocalMSL", "")
                     height_above_chart = tide_height.get("AboveChartDatum", "")
-                    height = height_above_local or height_above_twvd or height_above_chart
+                    height = height_above_twvd or height_above_local or height_above_chart
 
                     if date_time_str:
                         try:

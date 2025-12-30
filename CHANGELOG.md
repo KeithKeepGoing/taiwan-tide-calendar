@@ -5,6 +5,15 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.1.1] - 2025-12-30
+
+### 變更
+- 潮位高度優先使用台灣高程基準 (TWVD) 而非當地平均海平面 (LocalMSL)
+
+### 技術細節
+- **修改檔案**: `api/index.py`, `tide_calendar.py`
+- **優先順序**: AboveTWVD → AboveLocalMSL → AboveChartDatum
+
 ## [1.1.0] - 2025-12-29
 
 ### 新增
