@@ -365,6 +365,53 @@ INDEX_HTML = """
             font-size: 0.85em;
             opacity: 0.9;
         }
+        .top-stations {
+            background: #fff3e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .top-stations h3 {
+            margin-top: 0;
+            color: #e65100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .top-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .top-list li {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #ffe0b2;
+        }
+        .top-list li:last-child {
+            border-bottom: none;
+        }
+        .rank {
+            font-size: 1.2em;
+            font-weight: bold;
+            width: 30px;
+            color: #e65100;
+        }
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+        .station-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        .station-count {
+            background: #ffcc80;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            color: #e65100;
+        }
     </style>
 </head>
 <body>
@@ -382,6 +429,21 @@ INDEX_HTML = """
                 <span class="stats-number">{{ active_stations }}</span>
                 <span class="stats-label">熱門站點</span>
             </div>
+        </div>
+        {% endif %}
+
+        {% if top_stations %}
+        <div class="top-stations">
+            <h3>🔥 熱門站點排行</h3>
+            <ul class="top-list">
+                {% for station, count in top_stations %}
+                <li>
+                    <span class="rank rank-{{ loop.index }}">{{ loop.index }}</span>
+                    <span class="station-name">{{ station }}</span>
+                    <span class="station-count">{{ count }} 次訂閱</span>
+                </li>
+                {% endfor %}
+            </ul>
         </div>
         {% endif %}
 
@@ -427,6 +489,9 @@ def index():
     # 取得訂閱統計
     stats = get_all_station_stats()
 
+    # 取得前 5 名熱門站點
+    top_stations = list(stats["stations"].items())[:5]
+
     return render_template_string(
         INDEX_HTML,
         stations=TIDE_STATIONS.keys(),
@@ -434,6 +499,7 @@ def index():
         host=host,
         total_subscriptions=stats["total"],
         active_stations=len(stats["stations"]),
+        top_stations=top_stations,
     )
 
 

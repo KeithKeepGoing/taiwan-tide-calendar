@@ -5,6 +5,18 @@
 格式基於 [Keep a Changelog](https://keepachangelog.com/zh-TW/1.0.0/)，
 版本號遵循 [Semantic Versioning](https://semver.org/lang/zh-TW/)。
 
+## [1.2.1] - 2025-12-30
+
+### 新增
+- 首頁顯示熱門站點排行榜（前 5 名）
+- 排行榜顯示站點名稱與訂閱次數
+- 金銀銅牌顏色標示前三名
+
+### 技術細節
+- **修改檔案**: `api/index.py`
+- **新增 CSS**: `.top-stations`, `.top-list`, `.rank` 等樣式
+- **模板變更**: 新增熱門站點排行區塊
+
 ## [1.2.0] - 2025-12-30
 
 ### 新增
